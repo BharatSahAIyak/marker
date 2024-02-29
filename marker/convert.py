@@ -106,6 +106,8 @@ def convert_single_pdf(
         max_pages=max_pages,
     )
 
+    print(blocks)
+
     out_meta["toc"] = toc
     out_meta["pages"] = len(blocks)
     out_meta["ocr_stats"] = ocr_stats
