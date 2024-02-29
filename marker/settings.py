@@ -83,6 +83,8 @@ class Settings(BaseSettings):
         "ocrmypdf"  # Which OCR engine to use, either "tesseract" or "ocrmypdf".  Ocrmypdf is higher quality, but slower.
     )
 
+    TABLE_DETECT_FLAG: bool = True
+
     # Texify model
     TEXIFY_MODEL_MAX: int = 384  # Max inference length for texify
     TEXIFY_TOKEN_BUFFER: int = 256  # Number of tokens to buffer above max for texify

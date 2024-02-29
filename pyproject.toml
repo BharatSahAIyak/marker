@@ -44,7 +44,8 @@ bitsandbytes = "^0.41.2.post2"
 grpcio = "^1.60.0"
 texify = "^0.1.8"
 pdf2image = "^1.16.0"
-
+opencv-python="^4.9.0"
+timm="^0.9.16"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"
