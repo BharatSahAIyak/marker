@@ -111,12 +111,6 @@ def convert_single_pdf(
     #     language = detect_language_ocr(fname)
     #     langs = language
     #     print("langs >",langs)
-    
-    out_meta.update(
-        {
-            "languages": langs
-        }
-    )
 
     # Trim pages from doc to align with start page
     if start_page:
@@ -231,5 +225,14 @@ def convert_single_pdf(
     flush_cuda_memory()
     out_meta["postprocess_stats"] = {"edit": edit_stats}
     doc_images = images_to_dict(pages)
+
+    language = detect_language_text(full_text)
+    langs=[language]
+    print("langs >",langs)
+    out_meta.update(
+        {
+            "languages": langs
+        }
+    )
 
     return full_text, doc_images, out_meta, merged_lines
