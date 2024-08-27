@@ -2,6 +2,7 @@ from typing import List
 from marker.tables.schema import Rectangle, Line, Point, Cell
 import copy
 
+
 def find_intersections(h_line: Line, v_lines: List[Line]) -> List[Point]:
     """
     Find intersection points of horizontal and vertical lines.
@@ -97,6 +98,7 @@ def get_cells(boxes: List[Rectangle], h_lines: List[Line], v_lines: List[Line]):
 
     return new_cells
 
+
 def is_inside_cell(word, cell: Cell) -> bool:
     """Check if a word is inside the given rectangle."""
     word_x1, word_y1 = word["x"], word["y"]
@@ -117,12 +119,12 @@ def sort_words_in_rect(words: list, img):
     while len(words_list) != 0:
         per_line_words = []
         # Take the most upper rect
-        top_rect = min(words_list, key=lambda w : w['y'])
-        if top_rect['text'] == '|':
+        top_rect = min(words_list, key=lambda w: w["y"])
+        if top_rect["text"] == "|":
             words_list.remove(top_rect)
             continue
         line_y = top_rect["y"] + (top_rect["height"] / 2)
-        
+
         # Find overlapping boxes
         for word in words_list:
             if word["y"] <= line_y and line_y <= (word["y"] + word["height"]):
@@ -130,7 +132,7 @@ def sort_words_in_rect(words: list, img):
         # Remove boxes
         for word in per_line_words:
             words_list.remove(word)
-        
+
         per_line_words.sort(key=lambda w: w["x"])
         sorted_words.append(per_line_words)
     return sorted_words
@@ -147,7 +149,7 @@ def fill_text_in_cells(ocr_output, cells: List[Cell], img):
             cell.text += " " + " ".join([w["text"] for w in line])
         cell.text = cell.text.strip()
         cell.text = cell.text.replace("|", "")
-        
+
     # Sort boxes from top to bottom
     cells.sort(key=lambda c: c.y)
     # Sort boxes from left to right
@@ -158,5 +160,3 @@ def fill_text_in_cells(ocr_output, cells: List[Cell], img):
         cell.index = i
 
     return cells
-
-
