@@ -4,24 +4,36 @@ import pandas as pd
 from marker.schema.bbox import merge_boxes, box_intersection_pct, rescale_bbox
 from marker.schema.block import Line, Span, Block
 from marker.schema.page import Page
-from tabulate import tabulate
 from typing import List
 
 from marker.settings import settings
-from marker.tables.detections import cluster_horizontal_lines, cluster_vertical_lines, detect_borderlines, detect_horizontal_textlines, extend_lines, filter_non_intersecting_lines
-from marker.tables.intersections import detect_rowwise_intersection, detect_boxes, get_cells, fill_text_in_cells
-from marker.tables.utils import sort_table_blocks, replace_dots, replace_newlines
+from marker.tables.detections import (
+    cluster_horizontal_lines,
+    cluster_vertical_lines,
+    detect_borderlines,
+    detect_horizontal_textlines,
+    extend_lines,
+    filter_non_intersecting_lines,
+)
+from marker.tables.intersections import (
+    detect_rowwise_intersection,
+    detect_boxes,
+    get_cells,
+    fill_text_in_cells,
+)
+from marker.tables.utils import sort_table_blocks, replace_dots, replace_newlines, normalize_bbox, denormalize_bbox
 
-import fitz
 import PIL
-import pytesseract
 import torch
 from marker.tables.schema import Rectangle
 import tempfile
-from marker.tables.utils import save_table_image
+from marker.tables.utils import save_table_image, remove_extra_blocks
+import fitz
 import cv2
+import pytesseract
+import numpy as np
 
-def get_table_surya(page, table_box, space_tol=.01) -> List[List[str]]:
+def get_table_surya(page, table_box, space_tol=0.01) -> List[List[str]]:
     table_rows = []
     table_row = []
     x_position = None
@@ -31,7 +43,7 @@ def get_table_surya(page, table_box, space_tol=.01) -> List[List[str]]:
         for line_idx, line in enumerate(sorted_lines):
             line_bbox = line.bbox
             intersect_pct = box_intersection_pct(line_bbox, table_box)
-            if intersect_pct < .5 or len(line.spans) == 0:
+            if intersect_pct < 0.5 or len(line.spans) == 0:
                 continue
             normed_x_start = line_bbox[0] / page.width
             normed_x_end = line_bbox[2] / page.width
@@ -52,7 +64,9 @@ def get_table_surya(page, table_box, space_tol=.01) -> List[List[str]]:
     return table_rows
 
 
-def get_table_pdftext(page: Page, table_box, space_tol=.01, round_factor=4) -> List[List[str]]:
+def get_table_pdftext(
+    page: Page, table_box, space_tol=0.01, round_factor=4
+) -> List[List[str]]:
     page_width = page.width
     table_rows = []
     table_cell = ""
@@ -61,7 +75,7 @@ def get_table_pdftext(page: Page, table_box, space_tol=.01, round_factor=4) -> L
     sorted_char_blocks = sort_table_blocks(page.char_blocks)
 
     table_width = table_box[2] - table_box[0]
-    new_line_start_x = table_box[0] + table_width * .2
+    new_line_start_x = table_box[0] + table_width * 0.2
 
     for block_idx, block in enumerate(sorted_char_blocks):
         sorted_lines = sort_table_blocks(block["lines"])
@@ -83,24 +97,30 @@ def get_table_pdftext(page: Page, table_box, space_tol=.01, round_factor=4) -> L
                         cell_x_end /= page_width
 
                     cell_content = replace_dots(replace_newlines(table_cell))
-                    if cell_bbox is None: # First char
+                    if cell_bbox is None:  # First char
                         table_cell += char["char"]
                         cell_bbox = char["bbox"]
-                    elif cell_x_start - space_tol < x_start < cell_x_end + space_tol: # Check if we are in the same cell
+                    elif (
+                        cell_x_start - space_tol < x_start < cell_x_end + space_tol
+                    ):  # Check if we are in the same cell
                         table_cell += char["char"]
                         cell_bbox = merge_boxes(cell_bbox, char["bbox"])
                     # New line and cell
                     # Use x_start < new_line_start_x to account for out-of-order cells in the pdf
-                    elif x_start < cell_x_end - space_tol and x_start < new_line_start_x:
+                    elif (
+                        x_start < cell_x_end - space_tol and x_start < new_line_start_x
+                    ):
                         if len(table_cell) > 0:
                             table_row.append((cell_bbox, cell_content))
                         table_cell = char["char"]
                         cell_bbox = char["bbox"]
                         if len(table_row) > 0:
-                            table_row = sorted(table_row, key=lambda x: round(x[0][0] / round_factor))
+                            table_row = sorted(
+                                table_row, key=lambda x: round(x[0][0] / round_factor)
+                            )
                             table_rows.append(table_row)
                         table_row = []
-                    else: # Same line, new cell, check against cell bbox
+                    else:  # Same line, new cell, check against cell bbox
                         if len(table_cell) > 0:
                             table_row.append((cell_bbox, cell_content))
                         table_cell = char["char"]
@@ -124,13 +144,21 @@ def format_tables(pages: List[Page]):
         blocks_to_remove = set()
         pnum = page.pnum
         page_table_boxes = [b for b in page.layout.bboxes if b.label == "Table"]
-        page_table_boxes = [rescale_bbox(page.layout.image_bbox, page.bbox, b.bbox) for b in page_table_boxes]
+        page_table_boxes = [
+            rescale_bbox(page.layout.image_bbox, page.bbox, b.bbox)
+            for b in page_table_boxes
+        ]
         for table_idx, table_box in enumerate(page_table_boxes):
             for block_idx, block in enumerate(page.blocks):
                 intersect_pct = block.intersection_pct(table_box)
-                if intersect_pct > settings.BBOX_INTERSECTION_THRESH and block.block_type == "Table":
+                if (
+                    intersect_pct > settings.BBOX_INTERSECTION_THRESH
+                    and block.block_type == "Table"
+                ):
                     if table_idx not in table_insert_points:
-                        table_insert_points[table_idx] = block_idx - len(blocks_to_remove) + table_idx # Where to insert the new table
+                        table_insert_points[table_idx] = (
+                            block_idx - len(blocks_to_remove) + table_idx
+                        )  # Where to insert the new table
                     blocks_to_remove.add(block_idx)
 
         new_page_blocks = []
@@ -151,23 +179,29 @@ def format_tables(pages: List[Page]):
             if len(table_rows) == 0:
                 continue
 
-            table_text = tabulate(table_rows, headers="firstrow", tablefmt="github", disable_numparse=True)
+            table_text = tabulate(
+                table_rows, headers="firstrow", tablefmt="github", disable_numparse=True
+            )
             table_block = Block(
                 bbox=table_box,
                 block_type="Table",
                 pnum=pnum,
-                lines=[Line(
-                    bbox=table_box,
-                    spans=[Span(
+                lines=[
+                    Line(
                         bbox=table_box,
-                        span_id=f"{table_idx}_table",
-                        font="Table",
-                        font_size=0,
-                        font_weight=0,
-                        block_type="Table",
-                        text=table_text
-                    )]
-                )]
+                        spans=[
+                            Span(
+                                bbox=table_box,
+                                span_id=f"{table_idx}_table",
+                                font="Table",
+                                font_size=0,
+                                font_weight=0,
+                                block_type="Table",
+                                text=table_text,
+                            )
+                        ],
+                    )
+                ],
             )
             insert_point = table_insert_points[table_idx]
             new_page_blocks.insert(insert_point, table_block)
@@ -175,26 +209,26 @@ def format_tables(pages: List[Page]):
         page.blocks = new_page_blocks
     return table_count
 
+
 def table_detection(filename: str, pages: List[Page], max_pages: int):
-    from transformers import (
-        TableTransformerForObjectDetection,
-        DetrFeatureExtractor
-    )
-    
+    from transformers import TableTransformerForObjectDetection, DetrFeatureExtractor
+
     # Model setup
     THRESHOLD = 0.8
     table_detect_model = TableTransformerForObjectDetection.from_pretrained(
-    "microsoft/table-transformer-detection"
-)
+        "microsoft/table-transformer-detection"
+    )
     feature_extractor = DetrFeatureExtractor()
 
     doc = fitz.open(filename)
     length = len(doc)
     if max_pages:
         length = min(length, max_pages)
-    
+
     for i_pg in range(length):
-        extracted_data = extract_table(doc, i_pg, feature_extractor, table_detect_model, THRESHOLD=THRESHOLD)
+        extracted_data = extract_table(
+            doc, i_pg, feature_extractor, table_detect_model, THRESHOLD=THRESHOLD
+        )
         if extracted_data is None:
             continue
 
@@ -206,10 +240,12 @@ def table_detection(filename: str, pages: List[Page], max_pages: int):
             table_img_path,
         ) = extracted_data
         img = cv2.imread(table_img_path)
-                
+        pg_img = np.array(get_page(doc, i_pg))
+        remove_extra_blocks(pages[i_pg], table_bbox, pg_img)
+        cv2.imwrite(f"output/{i_pg}.png", pg_img)
         print("H Lines: ", len(h_lines))
         print("H Lines: ", len(v_lines))
-        
+
         h_lines.sort(key=lambda l: l.y)
         v_lines.sort(key=lambda l: l.x)
         rowwise_intersections = detect_rowwise_intersection(h_lines, v_lines)
@@ -218,53 +254,57 @@ def table_detection(filename: str, pages: List[Page], max_pages: int):
                 p.draw(img)
         boxes = detect_boxes(rowwise_intersections)
         cells = get_cells(boxes, h_lines, v_lines)
-        
+
         words_original = [
-    {"x": x, "y": y, "width": width, "height": height, "text": text}
-        for x, y, width, height, text in zip(
-            ocr_data["left"],
-            ocr_data["top"],
-            ocr_data["width"],
-            ocr_data["height"],
-            ocr_data["text"],
-        )
-        if text.strip()
-    ]
+            {"x": x, "y": y, "width": width, "height": height, "text": text}
+            for x, y, width, height, text in zip(
+                ocr_data["left"],
+                ocr_data["top"],
+                ocr_data["width"],
+                ocr_data["height"],
+                ocr_data["text"],
+            )
+            if text.strip()
+        ]
         fill_text_in_cells(words_original, cells, img)
         # row wise cell segregation
         rows = defaultdict(dict)
         for cell in cells:
             rows[cell.r][cell.c] = cell.text
-            
+
         table_df = pd.DataFrame.from_dict(rows, orient="index")
         if table_df.empty:
             print("The DataFrame is empty")
             continue
-        table_df = table_df.drop_duplicates(keep='last')
+        table_df = table_df.drop_duplicates(keep="last")
         table_df.columns = table_df.iloc[0]
         table_df = table_df[1:].reset_index(drop=True)
         table_df.to_csv(f"{i_pg}_table.csv", index=False)
         md = table_df.to_markdown(index=False)
-        
-        table_block = Block(
-                bbox=table_bbox,
-                block_type="Table",
-                pnum=i_pg,
-                lines=[Line(
-                    bbox=table_bbox,
-                    spans=[Span(
-                        bbox=table_bbox,
-                        span_id=f"{i_pg}_table",
-                        font="Table",
-                        font_size=0,
-                        font_weight=0,
-                        block_type="TABLE",
-                        text=md
-                    )]
-                )]
-            )
-        pages[i_pg].blocks.append(table_block)
 
+        table_block = Block(
+            bbox=table_bbox,
+            block_type="Table",
+            pnum=i_pg,
+            lines=[
+                Line(
+                    bbox=table_bbox,
+                    spans=[
+                        Span(
+                            bbox=table_bbox,
+                            span_id=f"{i_pg}_table",
+                            font="Table",
+                            font_size=0,
+                            font_weight=0,
+                            block_type="TABLE",
+                            text=md,
+                        )
+                    ],
+                )
+            ],
+        )
+        pages[i_pg].blocks.append(table_block)
+        # cv2.imwrite(f"{i_pg}.png", img)
 
 
 def get_page(pdf, page_num):
@@ -349,4 +389,4 @@ def extract_table(pdf: fitz.Document, page_num: int, encoder, detector, THRESHOL
                     v.draw(img_cv2)
 
                 cv2.imwrite(f"out/pg_{page_num}.png", img_cv2)
-                return h_lines, v_lines, ocr_data, ex_box, image_path        
+                return h_lines, v_lines, ocr_data, ex_box, image_path

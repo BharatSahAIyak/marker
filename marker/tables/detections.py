@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 from marker.tables.schema import Line
 import PIL.Image
+import pandas as pd
+
 
 def detect_borderlines(file_path: str, angle_threshold=1, vertical_slope_threshold=10):
     image = cv2.imread(file_path)
@@ -108,13 +110,13 @@ def filter_non_intersecting_lines(
     original_vertical_lines = vertical_lines.copy()
 
     # Modify the dimensions for intersection checking if specified
-    if not vertical_lines_width is None:
+    if  not pd.isnull(vertical_lines_width):
         vertical_lines_width = int(np.ceil(vertical_lines_width))
         vertical_lines = [
             Line(vl.x, vl.y, vertical_lines_width, vl.height) for vl in vertical_lines
         ]
 
-    if not horizontal_lines_height is None:
+    if not pd.isnull(horizontal_lines_height)  :
         horizontal_lines_height = int(np.ceil(horizontal_lines_height))
         horizontal_lines = [
             Line(hl.x, hl.y, hl.width, horizontal_lines_height)
