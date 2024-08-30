@@ -12,7 +12,7 @@ def images_to_dict(pages: List[Page]):
     for page in pages:
         if page.images is None:
             continue
-        for image_idx, image in enumerate(page.images):
+        for image_idx, (image,bbox) in enumerate(page.images):
             image_filename = get_image_filename(page, image_idx)
-            images[image_filename] = image
+            images[image_filename] = {"image":image, "bbox":bbox}
     return images

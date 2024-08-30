@@ -68,7 +68,7 @@ def extract_page_images(page_obj, page):
                 spans=[image_span]
             )
             block.lines.append(line)
-        page.images.append(image)
+        page.images.append((image,bbox))
 
 
 def extract_images(doc, pages):
