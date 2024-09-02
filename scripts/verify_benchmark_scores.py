@@ -3,7 +3,7 @@ import argparse
 
 
 def verify_scores(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
         data = json.load(file)
 
     multicolcnn_score = data["marker"]["files"]["multicolcnn.pdf"]["score"]

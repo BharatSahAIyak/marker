@@ -1,15 +1,15 @@
-
 from marker.schema.bbox import merge_boxes, box_intersection_pct, rescale_bbox
 from marker.schema.page import Page
 from typing import List
 
 from marker.settings import settings
 from marker.tables.custom_table_detection import table_detection
-from marker.schema.block import Line,Span,Block
+from marker.schema.block import Line, Span, Block
 from marker.tables.utils import sort_table_blocks, replace_dots, replace_newlines
 import fitz
 from tabulate import tabulate
 from marker.tables.cells import assign_cells_to_columns
+
 
 def get_table_surya(page, table_box, space_tol=0.01) -> List[List[str]]:
     table_rows = []
@@ -116,20 +116,22 @@ def get_table_pdftext(
 
 def format_tables(pages: List[Page], fname: str):
     from transformers import TableTransformerForObjectDetection, DetrFeatureExtractor
-    
+
     # Formats tables nicely into github flavored markdown
     table_count = 0
-    
+
     table_detect_model = TableTransformerForObjectDetection.from_pretrained(
-    "microsoft/table-transformer-detection"
+        "microsoft/table-transformer-detection"
     )
     feature_extractor = DetrFeatureExtractor()
     doc = fitz.open(fname)
-    
+
     for page in pages:
         pnum = page.pnum
         try:
-            total_tables = table_detection(doc, page, pnum, table_detect_model, feature_extractor)
+            total_tables = table_detection(
+                doc, page, pnum, table_detect_model, feature_extractor
+            )
         except Exception as e:
             total_tables = 0
             print(e)

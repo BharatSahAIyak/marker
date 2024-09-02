@@ -7,10 +7,7 @@ from marker.settings import settings
 
 
 def render_image(page: pdfium.PdfPage, dpi):
-    image = page.render(
-        scale=dpi / 72,
-        draw_annots=False
-    ).to_pil()
+    image = page.render(scale=dpi / 72, draw_annots=False).to_pil()
     image = image.convert("RGB")
     return image
 

@@ -3,7 +3,7 @@ import json
 
 
 def get_subfolder_path(out_folder, fname):
-    subfolder_name = fname.rsplit('.', 1)[0]
+    subfolder_name = fname.rsplit(".", 1)[0]
     subfolder_path = os.path.join(out_folder, subfolder_name)
     return subfolder_path
 
@@ -27,7 +27,7 @@ def save_markdown(out_folder, fname, full_text, images, out_metadata):
     markdown_filepath = get_markdown_filepath(out_folder, fname)
     out_meta_filepath = markdown_filepath.rsplit(".", 1)[0] + "_meta.json"
 
-    with open(markdown_filepath, "w+", encoding='utf-8') as f:
+    with open(markdown_filepath, "w+", encoding="utf-8") as f:
         f.write(full_text)
     with open(out_meta_filepath, "w+") as f:
         f.write(json.dumps(out_metadata, indent=4))

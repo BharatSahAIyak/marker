@@ -15,6 +15,7 @@ def get_batch_size():
         return 6
     return 2
 
+
 def get_latex_batched(images, token_counts, texify_model, batch_multiplier=1):
     if len(images) == 0:
         return []
@@ -30,7 +31,12 @@ def get_latex_batched(images, token_counts, texify_model, batch_multiplier=1):
         max_length = min(max_length, settings.TEXIFY_MODEL_MAX)
         max_length += settings.TEXIFY_TOKEN_BUFFER
 
-        model_output = batch_inference(images[min_idx:max_idx], texify_model, texify_model.processor, max_tokens=max_length)
+        model_output = batch_inference(
+            images[min_idx:max_idx],
+            texify_model,
+            texify_model.processor,
+            max_tokens=max_length,
+        )
 
         for j, output in enumerate(model_output):
             token_count = get_total_texify_tokens(output, texify_model.processor)
@@ -46,5 +52,3 @@ def get_total_texify_tokens(text, processor):
     tokenizer = processor.tokenizer
     tokens = tokenizer(text)
     return len(tokens["input_ids"])
-
-

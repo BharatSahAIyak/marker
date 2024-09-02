@@ -9,13 +9,17 @@ from surya.schema import TextDetectionResult, LayoutResult, OrderResult
 class Page(BboxElement):
     blocks: List[Block]
     pnum: int
-    rotation: Optional[int] = None # Rotation degrees of the page
+    rotation: Optional[int] = None  # Rotation degrees of the page
     text_lines: Optional[TextDetectionResult] = None
     layout: Optional[LayoutResult] = None
     order: Optional[OrderResult] = None
-    ocr_method: Optional[str] = None # One of "surya" or "tesseract"
-    char_blocks: Optional[List[Dict]] = None # Blocks with character-level data from pdftext
-    images: Optional[List[Any]] = None # Images to save along with the page, need Any to avoid pydantic error
+    ocr_method: Optional[str] = None  # One of "surya" or "tesseract"
+    char_blocks: Optional[List[Dict]] = (
+        None  # Blocks with character-level data from pdftext
+    )
+    images: Optional[List[Any]] = (
+        None  # Images to save along with the page, need Any to avoid pydantic error
+    )
 
     def get_nonblank_lines(self):
         lines = self.get_all_lines()

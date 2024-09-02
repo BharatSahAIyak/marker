@@ -4,6 +4,7 @@ from marker.schema.page import Page
 import PIL.Image
 from marker.tables.schema import Rectangle
 
+
 def sort_table_blocks(blocks, tolerance=5):
     vertical_groups = {}
     for block in blocks:
@@ -42,7 +43,6 @@ def replace_newlines(text):
     return newline_pattern.sub(" ", text.strip())
 
 
-
 def save_table_image(page_img: PIL.Image, box: Rectangle, output_path: str, padding=30):
     """Convert the tensor to a list of Python floats and then to integers"""
     padding = 30
@@ -62,39 +62,44 @@ def save_table_image(page_img: PIL.Image, box: Rectangle, output_path: str, padd
     cropped_image.save(output_path)
     return output_path
 
+
 def normalize_bbox(bbox, width, height):
     x_min, y_min, x_max, y_max = bbox
-    
+
     x_min_norm = x_min / width
     y_min_norm = y_min / height
     x_max_norm = x_max / width
     y_max_norm = y_max / height
-    
+
     return [x_min_norm, y_min_norm, x_max_norm, y_max_norm]
+
 
 def denormalize_bbox(normalized_bbox, width, height):
     x_min_norm, y_min_norm, x_max_norm, y_max_norm = normalized_bbox
-    
+
     x_min = x_min_norm * width
     y_min = y_min_norm * height
     x_max = x_max_norm * width
     y_max = y_max_norm * height
-    
+
     # Round to integers since pixel coordinates are typically whole numbers
     return [round(x_min), round(y_min), round(x_max), round(y_max)]
 
 
-
-def remove_extra_blocks(page: Page, table_bbox: list, img, ):
+def remove_extra_blocks(
+    page: Page,
+    table_bbox: list,
+    img,
+):
     height, width = img.shape[:2]
     print(table_bbox)
     box = Rectangle.fromCoords(*table_bbox)
     box.draw(img)
     blocks_to_remove = []
     for blk in page.blocks:
-        bbox_norm =  normalize_bbox(blk.bbox, page.width,page.height)
-        bbox = denormalize_bbox(bbox_norm,width,height )
-    
+        bbox_norm = normalize_bbox(blk.bbox, page.width, page.height)
+        bbox = denormalize_bbox(bbox_norm, width, height)
+
         block_rec = Rectangle.fromCoords(*bbox)
         if (box.top <= block_rec.top <= box.bottom) or (
             box.top <= block_rec.bottom <= box.bottom

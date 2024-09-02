@@ -11,7 +11,7 @@ def main():
     parser.add_argument("out_folder", help="Output folder")
     args = parser.parse_args()
 
-    script_path = pkg_resources.resource_filename(__name__, 'chunk_convert.sh')
+    script_path = pkg_resources.resource_filename(__name__, "chunk_convert.sh")
 
     # Construct the command
     cmd = f"{script_path} {args.in_folder} {args.out_folder}"

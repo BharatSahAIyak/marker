@@ -22,8 +22,7 @@ class Span(BboxElement):
     italic: Optional[bool] = None
     image: Optional[bool] = None
 
-
-    @field_validator('text')
+    @field_validator("text")
     @classmethod
     def fix_unicode(cls, text: str) -> str:
         return ftfy.fix_text(text)
@@ -96,8 +95,20 @@ def split_block_lines(block: Block, split_line_idx: int):
     elif split_line_idx == 0:
         return [block]
     else:
-        new_blocks.append(Block(lines=block.lines[:split_line_idx], bbox=bbox_from_lines(block.lines[:split_line_idx]), pnum=block.pnum))
-        new_blocks.append(Block(lines=block.lines[split_line_idx:], bbox=bbox_from_lines(block.lines[split_line_idx:]), pnum=block.pnum))
+        new_blocks.append(
+            Block(
+                lines=block.lines[:split_line_idx],
+                bbox=bbox_from_lines(block.lines[:split_line_idx]),
+                pnum=block.pnum,
+            )
+        )
+        new_blocks.append(
+            Block(
+                lines=block.lines[split_line_idx:],
+                bbox=bbox_from_lines(block.lines[split_line_idx:]),
+                pnum=block.pnum,
+            )
+        )
     return new_blocks
 
 
@@ -106,7 +117,9 @@ def find_insert_block(blocks: List[Block], bbox):
     match_dist = None
     for idx, block in enumerate(blocks):
         try:
-            dist = math.sqrt((block.bbox[1] - bbox[1]) ** 2 + (block.bbox[0] - bbox[0]) ** 2)
+            dist = math.sqrt(
+                (block.bbox[1] - bbox[1]) ** 2 + (block.bbox[0] - bbox[0]) ** 2
+            )
         except Exception as e:
             continue
 
@@ -116,5 +129,3 @@ def find_insert_block(blocks: List[Block], bbox):
     if nearest_match is None:
         return 0
     return nearest_match
-
-

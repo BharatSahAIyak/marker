@@ -41,13 +41,13 @@ def font_flags_decomposer(flags: Optional[int]) -> str:
         flag_descriptions.append("non_symbolic")
     if flags & (1 << 6):  # PDFFONT_ITALIC
         flag_descriptions.append("italic")
-    if flags & (1 << 16): # PDFFONT_ALLCAP
+    if flags & (1 << 16):  # PDFFONT_ALLCAP
         flag_descriptions.append("all_cap")
-    if flags & (1 << 17): # PDFFONT_SMALLCAP
+    if flags & (1 << 17):  # PDFFONT_SMALLCAP
         flag_descriptions.append("small_cap")
-    if flags & (1 << 18): # PDFFONT_FORCEBOLD
+    if flags & (1 << 18):  # PDFFONT_FORCEBOLD
         flag_descriptions.append("bold")
-    if flags & (1 << 19): # PDFFONT_USEEXTERNATTR
+    if flags & (1 << 19):  # PDFFONT_USEEXTERNATTR
         flag_descriptions.append("use_extern_attr")
 
     return "_".join(flag_descriptions)
@@ -69,7 +69,9 @@ def sort_block_group(blocks, tolerance=1.25):
     # Sort each group horizontally and flatten the groups into a single list
     sorted_blocks = []
     for _, group in sorted(vertical_groups.items()):
-        sorted_group = sorted(group, key=lambda x: x.bbox[0] if hasattr(x, "bbox") else x["bbox"][0])
+        sorted_group = sorted(
+            group, key=lambda x: x.bbox[0] if hasattr(x, "bbox") else x["bbox"][0]
+        )
         sorted_blocks.extend(sorted_group)
 
     return sorted_blocks

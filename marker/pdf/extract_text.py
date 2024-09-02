@@ -26,12 +26,14 @@ def pdftext_format_to_blocks(page, pnum: int) -> Page:
                 while len(block_text) > 0 and block_text[-1] in ["\n", "\r"]:
                     block_text = block_text[:-1]
 
-                block_text = block_text.replace("-\n", "") # Remove hyphenated line breaks
+                block_text = block_text.replace(
+                    "-\n", ""
+                )  # Remove hyphenated line breaks
                 span_obj = Span(
-                    text=block_text, # Remove end of line newlines, not spaces
+                    text=block_text,  # Remove end of line newlines, not spaces
                     bbox=s["bbox"],
                     span_id=f"{pnum}_{span_id}",
-                    font=f"{s['font']['name']}_{font_flags_decomposer(s['font']['flags'])}", # Add font flags to end of font
+                    font=f"{s['font']['name']}_{font_flags_decomposer(s['font']['flags'])}",  # Add font flags to end of font
                     font_weight=s["font"]["weight"],
                     font_size=s["font"]["size"],
                 )
@@ -44,11 +46,7 @@ def pdftext_format_to_blocks(page, pnum: int) -> Page:
             # Only select valid lines, with positive bboxes
             if line_obj.area >= 0:
                 block_lines.append(line_obj)
-        block_obj = Block(
-            lines=block_lines,
-            bbox=block["bbox"],
-            pnum=pnum
-        )
+        block_obj = Block(lines=block_lines, bbox=block["bbox"], pnum=pnum)
         # Only select blocks with lines
         if len(block_lines) > 0:
             page_blocks.append(block_obj)
@@ -69,12 +67,14 @@ def pdftext_format_to_blocks(page, pnum: int) -> Page:
         pnum=page["page"],
         bbox=page_bbox,
         rotation=rotation,
-        char_blocks=char_blocks
+        char_blocks=char_blocks,
     )
     return out_page
 
 
-def get_text_blocks(doc, fname, max_pages: Optional[int] = None, start_page: Optional[int] = None) -> (List[Page], Dict):
+def get_text_blocks(
+    doc, fname, max_pages: Optional[int] = None, start_page: Optional[int] = None
+) -> (List[Page], Dict):
     toc = get_toc(doc)
 
     if start_page:
@@ -90,8 +90,15 @@ def get_text_blocks(doc, fname, max_pages: Optional[int] = None, start_page: Opt
 
     page_range = range(start_page, start_page + max_pages)
 
-    char_blocks = dictionary_output(fname, page_range=page_range, keep_chars=True, workers=settings.PDFTEXT_CPU_WORKERS)
-    marker_blocks = [pdftext_format_to_blocks(page, pnum) for pnum, page in enumerate(char_blocks)]
+    char_blocks = dictionary_output(
+        fname,
+        page_range=page_range,
+        keep_chars=True,
+        workers=settings.PDFTEXT_CPU_WORKERS,
+    )
+    marker_blocks = [
+        pdftext_format_to_blocks(page, pnum) for pnum, page in enumerate(char_blocks)
+    ]
 
     return marker_blocks, toc
 

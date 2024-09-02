@@ -28,9 +28,9 @@ def load_editing_model(device=None, dtype=None):
         )
     else:
         model = T5ForTokenClassification.from_pretrained(
-                settings.EDITOR_MODEL_NAME,
-                torch_dtype=settings.MODEL_DTYPE,
-            ).to(settings.TORCH_DEVICE_MODEL)
+            settings.EDITOR_MODEL_NAME,
+            torch_dtype=settings.MODEL_DTYPE,
+        ).to(settings.TORCH_DEVICE_MODEL)
     model.eval()
 
     model.config.label2id = {
@@ -43,7 +43,9 @@ def load_editing_model(device=None, dtype=None):
     return model
 
 
-def edit_full_text(text: str, model: Optional[T5ForTokenClassification], batch_multiplier=1) -> (str, dict):
+def edit_full_text(
+    text: str, model: Optional[T5ForTokenClassification], batch_multiplier=1
+) -> (str, dict):
     if not model:
         return text, {}
 
@@ -55,9 +57,9 @@ def edit_full_text(text: str, model: Optional[T5ForTokenClassification], batch_m
     # Run model
     token_masks = []
     for i in range(0, len(input_ids), batch_size):
-        batch_input_ids = tokenized["input_ids"][i: i + batch_size]
+        batch_input_ids = tokenized["input_ids"][i : i + batch_size]
         batch_input_ids = torch.tensor(batch_input_ids, device=model.device)
-        batch_attention_mask = tokenized["attention_mask"][i: i + batch_size]
+        batch_attention_mask = tokenized["attention_mask"][i : i + batch_size]
         batch_attention_mask = torch.tensor(batch_attention_mask, device=model.device)
         with torch.inference_mode():
             predictions = model(batch_input_ids, attention_mask=batch_attention_mask)
@@ -82,7 +84,9 @@ def edit_full_text(text: str, model: Optional[T5ForTokenClassification], batch_m
 
     # Strip special tokens 0,1.  Keep unknown token, although it should never be used
     assert len(token_masks) == len(flat_input_ids)
-    token_masks = [mask for mask, token in zip(token_masks, flat_input_ids) if token >= 2]
+    token_masks = [
+        mask for mask, token in zip(token_masks, flat_input_ids) if token >= 2
+    ]
 
     assert len(token_masks) == len(list(text.encode("utf-8")))
 
@@ -91,7 +95,7 @@ def edit_full_text(text: str, model: Optional[T5ForTokenClassification], batch_m
     start = 0
     for i, char in enumerate(text):
         char_token_length = char_token_lengths[i]
-        masks = token_masks[start: start + char_token_length]
+        masks = token_masks[start : start + char_token_length]
         labels = [model.config.id2label[mask] for mask in masks]
         if all(l == "delete" for l in labels):
             # If we delete whitespace, roll with it, otherwise ignore
@@ -115,9 +119,3 @@ def edit_full_text(text: str, model: Optional[T5ForTokenClassification], batch_m
 
     out_text = "".join(out_text)
     return out_text, edit_stats
-
-
-
-
-
-

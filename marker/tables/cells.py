@@ -10,7 +10,7 @@ def cluster_coords(coords, row_count):
         return []
     coords = np.array(sorted(set(coords))).reshape(-1, 1)
 
-    clustering = DBSCAN(eps=.01, min_samples=max(2, row_count // 4)).fit(coords)
+    clustering = DBSCAN(eps=0.01, min_samples=max(2, row_count // 4)).fit(coords)
     clusters = clustering.labels_
 
     separators = []
@@ -22,19 +22,32 @@ def cluster_coords(coords, row_count):
     return separators
 
 
-def find_column_separators(page: Page, table_box, rows, round_factor=.002, min_count=1):
+def find_column_separators(
+    page: Page, table_box, rows, round_factor=0.002, min_count=1
+):
     left_edges = []
     right_edges = []
     centers = []
 
     line_boxes = [p.bbox for p in page.text_lines.bboxes]
-    line_boxes = [rescale_bbox(page.text_lines.image_bbox, page.bbox, l) for l in line_boxes]
-    line_boxes = [l for l in line_boxes if box_intersection_pct(l, table_box) > settings.BBOX_INTERSECTION_THRESH]
+    line_boxes = [
+        rescale_bbox(page.text_lines.image_bbox, page.bbox, l) for l in line_boxes
+    ]
+    line_boxes = [
+        l
+        for l in line_boxes
+        if box_intersection_pct(l, table_box) > settings.BBOX_INTERSECTION_THRESH
+    ]
 
     pwidth = page.bbox[2] - page.bbox[0]
     pheight = page.bbox[3] - page.bbox[1]
     for cell in line_boxes:
-        ncell = [cell[0] / pwidth, cell[1] / pheight, cell[2] / pwidth, cell[3] / pheight]
+        ncell = [
+            cell[0] / pwidth,
+            cell[1] / pheight,
+            cell[2] / pwidth,
+            cell[3] / pheight,
+        ]
         left_edges.append(ncell[0] / round_factor * round_factor)
         right_edges.append(ncell[2] / round_factor * round_factor)
         centers.append((ncell[0] + ncell[2]) / 2 * round_factor / round_factor)
@@ -54,8 +67,10 @@ def find_column_separators(page: Page, table_box, rows, round_factor=.002, min_c
     return separators
 
 
-def assign_cells_to_columns(page, table_box, rows, round_factor=.002, tolerance=.01):
-    separators = find_column_separators(page, table_box, rows, round_factor=round_factor)
+def assign_cells_to_columns(page, table_box, rows, round_factor=0.002, tolerance=0.01):
+    separators = find_column_separators(
+        page, table_box, rows, round_factor=round_factor
+    )
     additional_column_index = 0
     pwidth = page.bbox[2] - page.bbox[0]
     row_dicts = []

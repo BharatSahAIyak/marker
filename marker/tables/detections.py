@@ -110,13 +110,13 @@ def filter_non_intersecting_lines(
     original_vertical_lines = vertical_lines.copy()
 
     # Modify the dimensions for intersection checking if specified
-    if  not pd.isnull(vertical_lines_width):
+    if not pd.isnull(vertical_lines_width):
         vertical_lines_width = int(np.ceil(vertical_lines_width))
         vertical_lines = [
             Line(vl.x, vl.y, vertical_lines_width, vl.height) for vl in vertical_lines
         ]
 
-    if not pd.isnull(horizontal_lines_height)  :
+    if not pd.isnull(horizontal_lines_height):
         horizontal_lines_height = int(np.ceil(horizontal_lines_height))
         horizontal_lines = [
             Line(hl.x, hl.y, hl.width, horizontal_lines_height)

@@ -7,15 +7,19 @@ from marker.settings import settings
 
 def find_image_blocks(page):
     image_blocks = []
-    image_regions = [l.bbox for l in page.layout.bboxes if l.label in ["Figure", "Picture"]]
-    image_regions = [rescale_bbox(page.layout.image_bbox, page.bbox, b) for b in image_regions]
+    image_regions = [
+        l.bbox for l in page.layout.bboxes if l.label in ["Figure", "Picture"]
+    ]
+    image_regions = [
+        rescale_bbox(page.layout.image_bbox, page.bbox, b) for b in image_regions
+    ]
 
     insert_points = {}
     for region_idx, region in enumerate(image_regions):
         for block_idx, block in enumerate(page.blocks):
             for line_idx, line in enumerate(block.lines):
                 if line.intersection_pct(region) > settings.BBOX_INTERSECTION_THRESH:
-                    line.spans = [] # We will remove this line from the block
+                    line.spans = []  # We will remove this line from the block
 
                     if region_idx not in insert_points:
                         insert_points[region_idx] = (block_idx, line_idx)
@@ -56,17 +60,14 @@ def extract_page_images(page_obj, page):
             font_weight=0,
             font_size=0,
             image=True,
-            span_id=f"image_{image_idx}"
+            span_id=f"image_{image_idx}",
         )
 
         # Sometimes, the block has zero lines
         if len(block.lines) > line_idx:
             block.lines[line_idx].spans.append(image_span)
         else:
-            line = Line(
-                bbox=bbox,
-                spans=[image_span]
-            )
+            line = Line(bbox=bbox, spans=[image_span])
             block.lines.append(line)
         page.images.append(image)
 

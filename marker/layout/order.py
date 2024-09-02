@@ -21,16 +21,25 @@ def get_batch_size():
 
 
 def surya_order(doc, pages: List[Page], order_model, batch_multiplier=1):
-    images = [render_image(doc[pnum], dpi=settings.SURYA_ORDER_DPI) for pnum in range(len(pages))]
+    images = [
+        render_image(doc[pnum], dpi=settings.SURYA_ORDER_DPI)
+        for pnum in range(len(pages))
+    ]
 
     # Get bboxes for all pages
     bboxes = []
     for page in pages:
-        bbox = [b.bbox for b in page.layout.bboxes][:settings.ORDER_MAX_BBOXES]
+        bbox = [b.bbox for b in page.layout.bboxes][: settings.ORDER_MAX_BBOXES]
         bboxes.append(bbox)
 
     processor = order_model.processor
-    order_results = batch_ordering(images, bboxes, order_model, processor, batch_size=int(get_batch_size() * batch_multiplier))
+    order_results = batch_ordering(
+        images,
+        bboxes,
+        order_model,
+        processor,
+        batch_size=int(get_batch_size() * batch_multiplier),
+    )
     for page, order_result in zip(pages, order_results):
         page.order = order_result
 
