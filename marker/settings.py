@@ -112,7 +112,10 @@ class Settings(BaseSettings):
     DEBUG: bool = False  # Enable debug logging
     DEBUG_DATA_FOLDER: Optional[str] = None
     DEBUG_LEVEL: int = 0  # 0 to 2, 2 means log everything
-
+    
+    # Custom Table Detection
+    TABLE_TRANSFORMER_DETECTION_THRESHOLD: float = 0.8
+    
     @computed_field
     @property
     def CUDA(self) -> bool:

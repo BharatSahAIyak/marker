@@ -1,7 +1,8 @@
 import re
 from typing import List
 from marker.schema.page import Page
-
+import PIL.Image
+from marker.tables.schema import Rectangle
 
 def sort_table_blocks(blocks, tolerance=5):
     vertical_groups = {}
@@ -40,9 +41,6 @@ def replace_newlines(text):
     newline_pattern = re.compile(r"[\r\n]+")
     return newline_pattern.sub(" ", text.strip())
 
-
-import PIL
-from marker.tables.schema import Rectangle
 
 
 def save_table_image(page_img: PIL.Image, box: Rectangle, output_path: str, padding=30):
