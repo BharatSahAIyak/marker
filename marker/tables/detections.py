@@ -4,6 +4,7 @@ import numpy as np
 from marker.tables.schema import Line
 import PIL.Image
 import pandas as pd
+import math
 
 
 def detect_borderlines(file_path: str, angle_threshold=1, vertical_slope_threshold=10):
@@ -55,7 +56,10 @@ def detect_horizontal_textlines(data, image: PIL.Image) -> tuple[List[Line], flo
     heights = [
         data["height"][i] for i in range(len(data["text"])) if int(data["conf"][i]) > 0
     ]
-    average_height = np.mean(heights)
+    if len(heights) > 0:
+        average_height = np.mean(heights)
+    else:
+        average_height = 0
     lines = []
     for i in range(len(data["text"])):
         if int(data["conf"][i]) > 0:
@@ -251,6 +255,8 @@ def extend_lines(img, h_lines, v_lines, line_width):
     for l in v_lines:
         x, y, w, h = l.tolist()
         start_point = x - LEN_THRESHOLD, y - line_width
+        # if pd.isna(line_width):
+        #     line_width=0
         checking_lines_top.append(Line(x, y - 10, line_width + 2, 40))
         checking_lines_bottom.append(
             Line(x + w - line_width, y + h - (LEN_THRESHOLD / 2), line_width + 2, 40)
