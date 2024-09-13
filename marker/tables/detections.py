@@ -55,7 +55,10 @@ def detect_horizontal_textlines(data, image: PIL.Image) -> tuple[List[Line], flo
     heights = [
         data["height"][i] for i in range(len(data["text"])) if int(data["conf"][i]) > 0
     ]
-    average_height = np.mean(heights)
+    if len(heights) > 0:
+        average_height = np.mean(heights)
+    else:
+        average_height = 0
     lines = []
     for i in range(len(data["text"])):
         if int(data["conf"][i]) > 0:
