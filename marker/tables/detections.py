@@ -4,7 +4,6 @@ import numpy as np
 from marker.tables.schema import Line
 import PIL.Image
 import pandas as pd
-import math
 
 
 def detect_borderlines(file_path: str, angle_threshold=1, vertical_slope_threshold=10):
@@ -255,8 +254,6 @@ def extend_lines(img, h_lines, v_lines, line_width):
     for l in v_lines:
         x, y, w, h = l.tolist()
         start_point = x - LEN_THRESHOLD, y - line_width
-        # if pd.isna(line_width):
-        #     line_width=0
         checking_lines_top.append(Line(x, y - 10, line_width + 2, 40))
         checking_lines_bottom.append(
             Line(x + w - line_width, y + h - (LEN_THRESHOLD / 2), line_width + 2, 40)
