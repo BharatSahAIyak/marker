@@ -28,10 +28,18 @@ from marker.postprocessors.markdown import merge_spans, merge_lines, get_full_te
 from marker.cleaners.text import cleanup_text
 from marker.images.extract import extract_images
 from marker.images.save import images_to_dict
-from marker.ocr.langdetect import get_text, detect_language_text, detect_language_ocr, keep_most_frequent_element
+from marker.ocr.langdetect import (
+    get_text,
+    detect_language_text,
+    detect_language_ocr,
+    keep_most_frequent_element,
+    language_detection,
+)
 
 from typing import List, Dict, Tuple, Optional
 from marker.settings import settings
+
+
 def convert_single_pdf(
     fname: str,
     model_lst: List,
@@ -76,41 +84,10 @@ def convert_single_pdf(
         }
     )
 
-    valid_langs=["en","hi","or"]
+    valid_langs = ["en", "hi", "or"]
 
-    # Detecting language of the text layer present. Getting empty means OCR is needed.
-    language = detect_language_text(get_text(pages))
-    langs = [language]
-    # validate_langs(langs)
-
-    print("langs >",langs)
-    if language not in valid_langs:
-        OCR_ALL_PAGES = True
-        language = detect_language_ocr(fname)
-        langs = language
-        # if language in valid_langs:
-        #     pages = convert_pages_to_unicode(pages)
-
-        # else:
-        if keep_most_frequent_element(language)[0] not in valid_langs: 
-            langs = ["en"]
-        langs=list(set(langs))
-        if "unknown" in langs:
-            langs.remove("unknown")
-        for lang in langs:
-            if lang not in valid_langs:
-                langs.remove(lang)
-        if len(langs)==0:
-            langs = ["en"]
-        langs=list(langs)
-
-    print("langs >",langs)
-    
-
-    #     OCR_ALL_PAGES=True
-    #     language = detect_language_ocr(fname)
-    #     langs = language
-    #     print("langs >",langs)
+    languages_meta = language_detection(pages, fname, valid_langs)
+    out_meta.update({"languages": languages_meta})
 
     # Trim pages from doc to align with start page
     if start_page:
@@ -128,7 +105,13 @@ def convert_single_pdf(
 
     # OCR pages as needed
     pages, ocr_stats = run_ocr(
-        doc, pages, langs, ocr_model, OCR_ALL_PAGES, batch_multiplier=batch_multiplier
+        doc,
+        pages,
+        langs,
+        ocr_model,
+        OCR_ALL_PAGES,
+        languages_meta,
+        batch_multiplier=batch_multiplier,
     )
     flush_cuda_memory()
 
@@ -225,14 +208,5 @@ def convert_single_pdf(
     flush_cuda_memory()
     out_meta["postprocess_stats"] = {"edit": edit_stats}
     doc_images = images_to_dict(pages)
-
-    language = detect_language_text(full_text)
-    langs=[language]
-    print("langs >",langs)
-    out_meta.update(
-        {
-            "languages": langs
-        }
-    )
 
     return full_text, doc_images, out_meta, merged_lines
