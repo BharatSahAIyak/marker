@@ -12,12 +12,13 @@ from PIL import Image
 from pdf2image import convert_from_path
 import pytesseract
 
-from langdetect import detect, DetectorFactory
+from langdetect import detect, DetectorFactory, detect_langs
 from langdetect.lang_detect_exception import LangDetectException
 from marker.settings import settings
 
 # Ensure the results are deterministic
 DetectorFactory.seed = 0
+
 
 def detect_language_text(text):
     try:
@@ -25,20 +26,21 @@ def detect_language_text(text):
         language = detect(text)
     except LangDetectException:
         # If detection fails, return 'unknown'
-        language = 'unknown'
+        language = "unknown"
     return language
+
 
 api_key = os.environ.get("OPENAI_API_KEY")
 
 client = OpenAI(api_key=api_key)
 
-text_prompt = '''
+text_prompt = """
 You are a bot who identifies language of a given text. If text is gibberish or encoded, do not return any language (return empty string).
 Response format: json object with key: "language", value:"ISO 639-1 code of language."
 Here's the text: 
-'''
+"""
 
-image_prompt = '''
+image_prompt = """
 You are a powerful language model with vision capabilities. Your task is to analyze the provided image, and then determine the language of the text in it.
 
 Provide the result in the following JSON format:
@@ -47,50 +49,48 @@ Provide the result in the following JSON format:
 }
 
 Here is the image for analysis:
-'''
+"""
+
 
 def detect_language_llm(text, prompt=text_prompt):
     if len(text.split()) > 1000:
-        text=" ".join(text.split()[0:1000])
+        text = " ".join(text.split()[0:1000])
     try:
         print("Detecting language...")
         response = client.chat.completions.create(
             # model="gpt-4",
             model="gpt-3.5-turbo-0125",
             temperature=0,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt + text
-                }
-            ],
+            messages=[{"role": "user", "content": prompt + text}],
             response_format={"type": "json_object"},
         )
 
         llm_response = response.choices[0].message.content
-        language=json.loads(llm_response)["language"]
-    
+        language = json.loads(llm_response)["language"]
+
     except:
         print("Error while detecting language")
         language = ""
 
-    
-    return language        
+    return language
+
 
 def detect_language_page(image, prompt=image_prompt):
     try:
         base64_image = encode_image(image)
         print("Detecting language.")
         response = client.chat.completions.create(
-            model = "gpt-4o-mini",
-            messages = [
+            model="gpt-4o-mini",
+            messages=[
                 {
-                    "role":"user",
+                    "role": "user",
                     "content": [
                         {"type": "text", "text": prompt},
                         {
                             "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            },
                         },
                     ],
                 }
@@ -99,13 +99,14 @@ def detect_language_page(image, prompt=image_prompt):
         )
         llm_response = response.choices[0].message.content
         print(llm_response)
-        language=json.loads(llm_response)["language"]
+        language = json.loads(llm_response)["language"]
 
     except Exception as e:
         print("Error while detecting language.")
         language = "en"
 
     return language
+
 
 def detect_language_ocr(pdf_path):
     try:
@@ -114,11 +115,15 @@ def detect_language_ocr(pdf_path):
         n_pages = pdf_document.page_count
 
         results = []
-        for page_number in range(min(3, n_pages)):
-            page = pdf_document.load_page(page_number)  # Page numbers are 0-indexed in PyMuPDF
+        for page_number in range(n_pages):
+            page = pdf_document.load_page(
+                page_number
+            )  # Page numbers are 0-indexed in PyMuPDF
             pix = page.get_pixmap()
 
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_image_file:
+            with tempfile.NamedTemporaryFile(
+                suffix=".png", delete=False
+            ) as temp_image_file:
                 image_path = temp_image_file.name
                 pix.save(image_path)
 
@@ -134,10 +139,45 @@ def detect_language_ocr(pdf_path):
             os.remove(image_path)
 
     except Exception as e:
-        print("failed ocr language detection",e)
+        print("failed ocr language detection", e)
         return ["en"]
 
     return results
+
+
+def detect_language_ocr_page(pdf_path, page_number):
+    try:
+        print("Detecting language using OCR")
+        pdf_document = fitz.open(pdf_path)
+        n_pages = pdf_document.page_count
+
+        page = pdf_document.load_page(
+            page_number
+        )  # Page numbers are 0-indexed in PyMuPDF
+        pix = page.get_pixmap()
+
+        with tempfile.NamedTemporaryFile(
+            suffix=".png", delete=False
+        ) as temp_image_file:
+            image_path = temp_image_file.name
+            pix.save(image_path)
+
+        # language = detect_language_page(image_path)
+
+        # results.append(language)
+
+        text = extract_text_from_image(image_path)
+        result = detect_language_text(text)
+
+        # Clean up the temporary image file
+        os.remove(image_path)
+
+    except Exception as e:
+        print("failed ocr language detection", e)
+        return "unknown"
+
+    return result
+
 
 def extract_text_from_image(image_path):
     """
@@ -151,11 +191,30 @@ def extract_text_from_image(image_path):
     """
     try:
         image = Image.open(image_path)
-        text = pytesseract.image_to_string(image, lang='eng+hin+ori')
+        text = pytesseract.image_to_string(image, lang="eng+hin+ori")
         return text
     except Exception as e:
         print(f"An error occurred while OCR language detection: {e}")
         return ""
+
+
+def language_detection(pages: List[Page], pdf_path, valid_langs):
+    languages_meta = {}
+    for i, page in enumerate(pages):
+        page_text = page.prelim_text
+        page_language = detect_language_text(page_text)
+
+        if page_language not in valid_langs:
+            page_language = detect_language_ocr_page(pdf_path, i)
+            languages_meta[str(i)] = (
+                page_language if page_language in valid_langs else "unknown"
+            )
+
+        else:
+            languages_meta[str(i)] = page_language
+
+    return languages_meta
+
 
 def get_text(pages: List[Page]):
     full_text = ""
@@ -163,14 +222,17 @@ def get_text(pages: List[Page]):
         full_text += page.prelim_text
     return full_text.strip()
 
+
 # Function to encode the image
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
-    
+
+
 def pdf_page_to_image(pdf_path, page_number):
     images = convert_from_path(pdf_path, first_page=page_number, last_page=page_number)
     return images[0]
+
 
 def keep_most_frequent_element(lst):
     if not lst:

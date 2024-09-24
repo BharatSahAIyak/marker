@@ -35,6 +35,7 @@ def run_ocr(
     langs: List[str],
     rec_model,
     OCR_ALL_PAGES,
+    languages_meta,
     batch_multiplier=1,
 ) -> (List[Page], Dict):
     ocr_pages = 0
@@ -42,9 +43,15 @@ def run_ocr(
     ocr_failed = 0
     no_text = no_text_found(pages)
     ocr_idxs = []
+    ocr_langs = [
+        int(k) for k, v in languages_meta.items() if v not in ["en", "unknown"]
+    ]
+    unknown_langs = [
+        int(k) for k, v in languages_meta.items() if v not in ["en", "unknown"]
+    ]
     for pnum, page in enumerate(pages):
         ocr_needed = should_ocr_page(page, no_text, OCR_ALL_PAGES)
-        if ocr_needed:
+        if (ocr_needed or pnum in ocr_langs) and pnum not in unknown_langs:
             ocr_idxs.append(pnum)
             ocr_pages += 1
 
